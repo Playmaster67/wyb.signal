@@ -14,6 +14,19 @@ function getAdmin() {
 
 // ─── Schemas de validação ─────────────────────────────────────────────────────
 
+// GTM Server-Side não converte epoch → ISO sem JS extra no container.
+// Aceita ISO 8601 ou epoch em segundos/milissegundos (number ou string numérica).
+const TimestampField = z.preprocess((val) => {
+  if (typeof val === "number") {
+    return new Date(val < 1e12 ? val * 1000 : val).toISOString();
+  }
+  if (typeof val === "string" && /^\d+$/.test(val)) {
+    const n = Number(val);
+    return new Date(n < 1e12 ? n * 1000 : n).toISOString();
+  }
+  return val;
+}, z.string().datetime({ offset: true }));
+
 const BaseEvent = z.object({
   event_type:        z.enum(["lead", "ftd", "redeposit"]),
   user_id:           z.string().min(1).max(255),
@@ -21,7 +34,7 @@ const BaseEvent = z.object({
   value_brl:         z.number().nonnegative().finite(),
   value_original:    z.number().nonnegative().finite().optional(),
   currency_original: z.string().length(3).toUpperCase().optional(),
-  timestamp:         z.string().datetime({ offset: true }),
+  timestamp:         TimestampField,
 });
 
 const EventSchema = z.discriminatedUnion("event_type", [

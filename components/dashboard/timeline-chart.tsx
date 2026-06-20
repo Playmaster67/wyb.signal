@@ -3,18 +3,9 @@
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 import { C } from "@/lib/chart-colors";
 
-const data = [
-  { date: "01/06", leads: 62,  ftds: 9  },
-  { date: "03/06", leads: 78,  ftds: 12 },
-  { date: "05/06", leads: 55,  ftds: 7  },
-  { date: "07/06", leads: 91,  ftds: 14 },
-  { date: "09/06", leads: 83,  ftds: 11 },
-  { date: "11/06", leads: 110, ftds: 18 },
-  { date: "13/06", leads: 97,  ftds: 15 },
-  { date: "15/06", leads: 124, ftds: 21 },
-  { date: "17/06", leads: 108, ftds: 16 },
-  { date: "18/06", leads: 99,  ftds: 14 },
-];
+interface TimelineChartProps {
+  data: { date: string; leads: number; ftds: number }[];
+}
 
 function CustomTooltip({ active, payload, label }: {
   active?: boolean;
@@ -38,7 +29,7 @@ function CustomTooltip({ active, payload, label }: {
   );
 }
 
-export function TimelineChart() {
+export function TimelineChart({ data }: TimelineChartProps) {
   return (
     <div className="border border-wyb-border rounded-[10px] bg-wyb-surface p-4 shadow-wyb">
       <div className="flex items-center justify-between mb-3">
@@ -56,26 +47,32 @@ export function TimelineChart() {
           </span>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={180}>
-        <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-          <defs>
-            <linearGradient id="leadsGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={C.accent} stopOpacity={0.08} />
-              <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="ftdsGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={C.pos} stopOpacity={0.08} />
-              <stop offset="100%" stopColor={C.pos} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke={C.border} strokeDasharray="0" vertical={false} />
-          <XAxis dataKey="date" tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
-          <Tooltip content={<CustomTooltip />} />
-          <Area type="monotone" dataKey="leads" stroke={C.accent} strokeWidth={1.5} fill="url(#leadsGrad)" dot={false} activeDot={{ r: 3, fill: C.accent }} />
-          <Area type="monotone" dataKey="ftds"  stroke={C.pos}    strokeWidth={1.5} fill="url(#ftdsGrad)"  dot={false} activeDot={{ r: 3, fill: C.pos }}    />
-        </AreaChart>
-      </ResponsiveContainer>
+      {data.length === 0 ? (
+        <div className="h-[180px] flex items-center justify-center text-[12px] text-wyb-muted">
+          Nenhum evento registrado no período selecionado.
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={180}>
+          <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+            <defs>
+              <linearGradient id="leadsGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={C.accent} stopOpacity={0.08} />
+                <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="ftdsGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={C.pos} stopOpacity={0.08} />
+                <stop offset="100%" stopColor={C.pos} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke={C.border} strokeDasharray="0" vertical={false} />
+            <XAxis dataKey="date" tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Area type="monotone" dataKey="leads" stroke={C.accent} strokeWidth={1.5} fill="url(#leadsGrad)" dot={false} activeDot={{ r: 3, fill: C.accent }} />
+            <Area type="monotone" dataKey="ftds"  stroke={C.pos}    strokeWidth={1.5} fill="url(#ftdsGrad)"  dot={false} activeDot={{ r: 3, fill: C.pos }}    />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }

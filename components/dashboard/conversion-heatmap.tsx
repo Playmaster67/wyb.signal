@@ -5,38 +5,36 @@ import { C } from "@/lib/chart-colors";
 
 const DAYS  = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const SLOTS = ["00–02", "03–05", "06–08", "09–11", "12–14", "15–17", "18–20", "21–23"];
-
-const raw: number[][] = [
-  [  4,  2,  1,  3,  5,  8, 14, 18 ], // Dom
-  [  2,  1,  1,  4,  6,  7,  9, 11 ], // Seg
-  [  2,  1,  1,  3,  5,  6,  8, 10 ], // Ter
-  [  3,  1,  1,  4,  6,  7, 10, 12 ], // Qua
-  [  3,  2,  1,  4,  6,  8, 11, 14 ], // Qui
-  [  5,  2,  1,  5,  7, 10, 16, 21 ], // Sex
-  [  6,  3,  2,  5,  8, 11, 17, 22 ], // Sáb
-];
-
-const maxVal = Math.max(...raw.flat());
-
-function cellOpacity(v: number) {
-  return 0.08 + (v / maxVal) * 0.82;
-}
-
-function cellTextClass(v: number) {
-  if (v === 0)  return "";
-  if (v < 5)   return "text-wyb-faint";
-  if (v < 12)  return "text-wyb-muted";
-  return "text-wyb-accent font-semibold";
-}
-
 const LEGEND_OPACITIES = [0.1, 0.25, 0.45, 0.65, 0.87];
 
-export function ConversionHeatmap() {
+interface ConversionHeatmapProps {
+  grid: number[][]; // 7 dias × 8 blocos de 3h
+}
+
+export function ConversionHeatmap({ grid }: ConversionHeatmapProps) {
+  const maxVal = Math.max(1, ...grid.flat());
+  const hasData = grid.flat().some((v) => v > 0);
+
+  function cellOpacity(v: number) {
+    return v === 0 ? 0 : 0.08 + (v / maxVal) * 0.82;
+  }
+
+  function cellTextClass(v: number) {
+    if (v === 0)  return "";
+    if (v < 5)   return "text-wyb-faint";
+    if (v < 12)  return "text-wyb-muted";
+    return "text-wyb-accent font-semibold";
+  }
+
   return (
     <div className="border border-wyb-border rounded-[10px] bg-wyb-surface p-4 shadow-wyb">
       <p className="text-[11px] font-medium uppercase tracking-wider text-wyb-muted mb-3">
         FTDs por hora — dia × período
       </p>
+
+      {!hasData && (
+        <p className="text-[12px] text-wyb-muted mb-3">Nenhum FTD registrado ainda.</p>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[11px]">
@@ -55,7 +53,7 @@ export function ConversionHeatmap() {
               <tr key={day}>
                 <td className="pr-2 py-0.5 font-medium text-wyb-muted whitespace-nowrap">{day}</td>
                 {SLOTS.map((_, si) => {
-                  const v = raw[di][si];
+                  const v = grid[di][si];
                   return (
                     <td key={si} className="px-0.5 py-0.5">
                       <div

@@ -9,8 +9,11 @@ import { AvgTicketChart }    from "@/components/dashboard/avg-ticket-chart";
 import { RetentionChart }    from "@/components/dashboard/retention-chart";
 import { ConversionHeatmap } from "@/components/dashboard/conversion-heatmap";
 import { PeriodFilter }      from "@/components/dashboard/period-filter";
+import { getDashboardData }  from "@/lib/dashboard/data";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const data = await getDashboardData();
+
   return (
     <div className="flex flex-col min-h-screen bg-wyb-bg">
       {/* Topbar */}
@@ -23,32 +26,56 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 p-4 space-y-4">
-        {/* KPIs de influencers */}
-        <KPIStrip />
+        {/* KPIs globais — todos os eventos, atribuídos ou não */}
+        <KPIStrip
+          leads={data.leadsCount}
+          ftds={data.ftdsCount}
+          redeposits={data.redepositsCount}
+          volumeBrl={data.volumeBrl}
+          leadToFtdRate={data.leadToFtdRate}
+        />
 
         {/* Tráfego direto — eventos sem utm_inf */}
-        <OrganicStrip />
+        <OrganicStrip
+          leads={data.organic.leadsCount}
+          ftds={data.organic.ftdsCount}
+          ftdVolumeBrl={data.organic.ftdVolumeBrl}
+          redeposits={data.organic.redepositsCount}
+          redepositVolumeBrl={data.organic.redepositVolumeBrl}
+        />
 
         {/* Linha temporal + funil */}
         <div className="grid grid-cols-[1fr_300px] gap-4">
-          <TimelineChart />
-          <FunnelChart />
+          <TimelineChart data={data.timeline} />
+          <FunnelChart
+            leadUsers={data.uniqueLeadUsers}
+            ftdUsers={data.uniqueFtdUsers}
+            redepositUsers={data.uniqueRedepositUsers}
+          />
         </div>
 
-        {/* Ticket médio + Retenção */}
+        {/* Ticket médio + Retenção — dependem de atribuição a influencer */}
         <div className="grid grid-cols-2 gap-4">
-          <AvgTicketChart />
-          <RetentionChart />
+          <AvgTicketChart data={[]} />
+          <RetentionChart data={[]} />
         </div>
 
         {/* Heatmap + FTDs por influencer */}
         <div className="grid grid-cols-[1fr_280px] gap-4">
-          <ConversionHeatmap />
-          <FTDByInfluencer />
+          <ConversionHeatmap grid={data.heatmap} />
+          <FTDByInfluencer data={[]} />
         </div>
 
-        {/* Ranking */}
-        <RankingTable />
+        {/* Ranking — linhas de influencer vazias até existir atribuição real */}
+        <RankingTable
+          influencerRows={[]}
+          organic={{
+            leads: data.organic.leadsCount,
+            ftds: data.organic.ftdsCount,
+            redeposits: data.organic.redepositsCount,
+            volume_brl: data.organic.ftdVolumeBrl + data.organic.redepositVolumeBrl,
+          }}
+        />
       </main>
     </div>
   );

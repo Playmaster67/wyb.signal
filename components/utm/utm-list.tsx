@@ -15,17 +15,6 @@ interface Row {
   total_ftds: number;
 }
 
-const DATA: Row[] = [
-  { id: "1", name: "thunder_br",   country: "BR", utm_id: "a3k9f2", status: "active",   total_ftds: 89 },
-  { id: "2", name: "vitinho_fx",   country: "BR", utm_id: "b7m2x1", status: "active",   total_ftds: 74 },
-  { id: "3", name: "camila.odds",  country: "BR", utm_id: "c9p4n8", status: "active",   total_ftds: 61 },
-  { id: "4", name: "betmaster_mx", country: "MX", utm_id: "d2q7r3", status: "active",   total_ftds: 53 },
-  { id: "5", name: "lukasbet",     country: "BR", utm_id: "e5s1t6", status: "active",   total_ftds: 44 },
-  { id: "6", name: "analista_cl",  country: "CL", utm_id: "f8u3v9", status: "inactive", total_ftds: 38 },
-  { id: "7", name: "rodrigo_vip",  country: "BR", utm_id: "g1w6y2", status: "active",   total_ftds: 29 },
-  { id: "8", name: "palpiteiro",   country: "BR", utm_id: "h4z9a5", status: "active",   total_ftds: 19 },
-];
-
 // ─── UTM chip com copy ────────────────────────────────────────────────────────
 function UtmChip({ utmId }: { utmId: string }) {
   const [copied, setCopied] = useState(false);
@@ -67,7 +56,7 @@ function UtmChip({ utmId }: { utmId: string }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export function UTMList() {
+export function UTMList({ initialData }: { initialData: Row[] }) {
   const [searchRaw, setSearchRaw] = useState("");
   const [search, setSearch]       = useState("");
 
@@ -77,12 +66,12 @@ export function UTMList() {
   }, [searchRaw]);
 
   const rows = useMemo(() => {
-    if (!search) return DATA;
+    if (!search) return initialData;
     const q = search.toLowerCase();
-    return DATA.filter(
+    return initialData.filter(
       (r) => r.name.toLowerCase().includes(q) || r.utm_id.toLowerCase().includes(q)
     );
-  }, [search]);
+  }, [search, initialData]);
 
   return (
     <>
@@ -140,7 +129,7 @@ export function UTMList() {
                 <td colSpan={4} className="px-4 py-10 text-center text-wyb-muted">
                   {searchRaw
                     ? `Nenhum resultado para "${searchRaw}"`
-                    : "Nenhum influencer encontrado."}
+                    : "Nenhum influencer cadastrado ainda."}
                 </td>
               </tr>
             ) : (
@@ -196,7 +185,7 @@ export function UTMList() {
         {/* Footer count */}
         <div className="px-4 py-3 border-t border-wyb-border">
           <span className="text-[12px] text-wyb-muted">
-            {rows.length} de {DATA.length} influencer{DATA.length !== 1 ? "s" : ""}
+            {rows.length} de {initialData.length} influencer{initialData.length !== 1 ? "s" : ""}
           </span>
         </div>
       </div>

@@ -1,51 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Copy, Check, Link2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface Influencer {
-  id: string;
-  name: string;
-  utm_id: string;
-  status: "active" | "inactive";
-}
-
-interface Link {
-  id: string;
-  influencer_id: string;
-  influencer_name: string;
-  utm_id: string;
-  base_url: string;
-  full_url: string;
-  label: string;
-  active: boolean;
-  created_at: string;
-}
-
-// ─── Static data ──────────────────────────────────────────────────────────────
-const INFLUENCERS: Influencer[] = [
-  { id: "1", name: "thunder_br",   utm_id: "a3k9f2", status: "active"   },
-  { id: "2", name: "vitinho_fx",   utm_id: "b7m2x1", status: "active"   },
-  { id: "3", name: "camila.odds",  utm_id: "c9p4n8", status: "active"   },
-  { id: "4", name: "betmaster_mx", utm_id: "d2q7r3", status: "active"   },
-  { id: "5", name: "lukasbet",     utm_id: "e5s1t6", status: "active"   },
-  { id: "6", name: "analista_cl",  utm_id: "f8u3v9", status: "inactive" },
-  { id: "7", name: "rodrigo_vip",  utm_id: "g1w6y2", status: "active"   },
-  { id: "8", name: "palpiteiro",   utm_id: "h4z9a5", status: "active"   },
-];
-
-const MOCK_LINKS: Link[] = [
-  { id: "l1", influencer_id: "1", influencer_name: "thunder_br",   utm_id: "a3k9f2", base_url: "https://dios.bet/", full_url: "https://dios.bet/?utm_inf=a3k9f2", label: "thunder_jan",  active: true,  created_at: "2025-01-20" },
-  { id: "l2", influencer_id: "2", influencer_name: "vitinho_fx",   utm_id: "b7m2x1", base_url: "https://dios.bet/", full_url: "https://dios.bet/?utm_inf=b7m2x1", label: "vitinho_fev",  active: true,  created_at: "2025-02-10" },
-  { id: "l3", influencer_id: "3", influencer_name: "camila.odds",  utm_id: "c9p4n8", base_url: "https://dios.bet/", full_url: "https://dios.bet/?utm_inf=c9p4n8", label: "camila_mar",   active: false, created_at: "2025-03-05" },
-  { id: "l4", influencer_id: "1", influencer_name: "thunder_br",   utm_id: "a3k9f2", base_url: "https://dios.bet/", full_url: "https://dios.bet/?utm_inf=a3k9f2", label: "thunder_abr",  active: true,  created_at: "2025-03-15" },
-  { id: "l5", influencer_id: "4", influencer_name: "betmaster_mx", utm_id: "d2q7r3", base_url: "https://dios.bet/", full_url: "https://dios.bet/?utm_inf=d2q7r3", label: "betmaster_abr", active: true,  created_at: "2025-04-01" },
-];
+import { createLinkAction, toggleLinkActiveAction } from "@/app/(dashboard)/links/actions";
+import type { LinkInfluencer as Influencer, LinkRow as Link } from "@/lib/links/data";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function buildFullUrl(base: string, utmId: string): string {
@@ -90,15 +53,27 @@ function CopyButton({ value, className }: { value: string; className?: string })
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export function LinkBuilder() {
+export function LinkBuilder({
+  initialInfluencers,
+  initialLinks,
+}: {
+  initialInfluencers: Influencer[];
+  initialLinks: Link[];
+}) {
+  const router = useRouter();
+  const influencers = initialInfluencers;
+  const links       = initialLinks;
+
   const [influencerId, setInfluencerId] = useState("");
   const [baseUrl, setBaseUrl]           = useState("");
   const [label, setLabel]               = useState("");
-  const [links, setLinks]               = useState<Link[]>(MOCK_LINKS);
+  const [submitting, setSubmitting]     = useState(false);
+  const [createError, setCreateError]   = useState("");
+  const [pendingId, setPendingId]       = useState<string | null>(null);
 
   const selectedInfluencer = useMemo(
-    () => INFLUENCERS.find((r) => r.id === influencerId) ?? null,
-    [influencerId]
+    () => influencers.find((r) => r.id === influencerId) ?? null,
+    [influencerId, influencers]
   );
 
   const urlError  = validateUrl(baseUrl.trim());
@@ -107,34 +82,35 @@ export function LinkBuilder() {
     ? buildFullUrl(baseUrl.trim(), selectedInfluencer.utm_id)
     : null;
 
-  function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!isValid || !selectedInfluencer) return;
-    const trimmedBase = baseUrl.trim();
-    const fullUrl = buildFullUrl(trimmedBase, selectedInfluencer.utm_id);
-    setLinks((prev) => [
-      {
-        id:               crypto.randomUUID(),
-        influencer_id:    selectedInfluencer.id,
-        influencer_name:  selectedInfluencer.name,
-        utm_id:           selectedInfluencer.utm_id,
-        base_url:         trimmedBase,
-        full_url:         fullUrl,
-        label:            label.trim(),
-        active:           true,
-        created_at:       new Date().toISOString().split("T")[0],
-      },
-      ...prev,
-    ]);
+
+    setSubmitting(true);
+    setCreateError("");
+    const result = await createLinkAction(selectedInfluencer.id, baseUrl.trim(), label.trim());
+    setSubmitting(false);
+
+    if (result.error) {
+      setCreateError(result.error);
+      return;
+    }
+
     setBaseUrl("");
     setLabel("");
     // Mantém o influencer selecionado para facilitar criação de múltiplos links
+    router.refresh();
   }
 
-  function handleToggle(id: string) {
-    setLinks((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, active: !l.active } : l))
-    );
+  async function handleToggle(id: string, active: boolean) {
+    setPendingId(id);
+    const { error } = await toggleLinkActiveAction(id, !active);
+    setPendingId(null);
+    if (error) {
+      alert(error);
+      return;
+    }
+    router.refresh();
   }
 
   const activeCount = links.filter((l) => l.active).length;
@@ -167,7 +143,7 @@ export function LinkBuilder() {
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-[13px] text-foreground outline-none transition-colors focus:border-ring"
               >
                 <option value="">Selecionar…</option>
-                {INFLUENCERS.map((inf) => (
+                {influencers.map((inf) => (
                   <option key={inf.id} value={inf.id}>
                     {inf.name}{inf.status === "inactive" ? " (Inativo)" : ""}
                   </option>
@@ -222,10 +198,17 @@ export function LinkBuilder() {
             </div>
           )}
 
+          {createError && (
+            <div className="flex items-center gap-1.5 text-[11px] text-wyb-neg">
+              <AlertCircle className="size-3 shrink-0" />
+              {createError}
+            </div>
+          )}
+
           {/* Submit */}
           <div className="flex justify-end pt-1">
-            <Button type="submit" size="sm" disabled={!isValid}>
-              Criar link
+            <Button type="submit" size="sm" disabled={!isValid || submitting}>
+              {submitting ? "Criando…" : "Criar link"}
             </Button>
           </div>
         </form>
@@ -332,15 +315,16 @@ export function LinkBuilder() {
                     {/* Actions */}
                     <td className="px-4">
                       <button
-                        onClick={() => handleToggle(link.id)}
+                        onClick={() => handleToggle(link.id, link.active)}
+                        disabled={pendingId === link.id}
                         className={cn(
-                          "text-[12px] font-medium px-2 py-1 rounded-[6px] transition-colors whitespace-nowrap",
+                          "text-[12px] font-medium px-2 py-1 rounded-[6px] transition-colors whitespace-nowrap disabled:opacity-50",
                           link.active
                             ? "text-amber-500 hover:bg-amber-500/10"
                             : "text-wyb-pos hover:bg-wyb-pos/10"
                         )}
                       >
-                        {link.active ? "Desativar" : "Reativar"}
+                        {pendingId === link.id ? "…" : link.active ? "Desativar" : "Reativar"}
                       </button>
                     </td>
                   </tr>

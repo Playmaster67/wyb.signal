@@ -1,39 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Download, AlertTriangle, FileText, FileSpreadsheet, Clock } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, FileText, FileSpreadsheet, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getExportPreviewAction } from "@/app/(dashboard)/exports/actions";
+import type { ExportLogRow, ExportInfluencer } from "@/lib/exports/data";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Period      = "7" | "14" | "30" | "90";
 type EventType   = "all" | "lead" | "ftd" | "redeposit";
 type Attribution = "all" | "attributed" | "organic";
 type Format      = "csv" | "xlsx";
-
-interface ExportLog {
-  id: string;
-  exported_at: string;
-  period: string;
-  event_type: string;
-  influencer: string;
-  row_count: number;
-  format: Format;
-}
-
-// ─── Static data ──────────────────────────────────────────────────────────────
-const INFLUENCERS = [
-  { id: "all",  name: "Todos os influencers" },
-  { id: "1",    name: "thunder_br"    },
-  { id: "2",    name: "vitinho_fx"    },
-  { id: "3",    name: "camila.odds"   },
-  { id: "4",    name: "betmaster_mx"  },
-  { id: "5",    name: "lukasbet"      },
-  { id: "6",    name: "analista_cl"   },
-  { id: "7",    name: "rodrigo_vip"   },
-  { id: "8",    name: "palpiteiro"    },
-];
 
 const PERIOD_LABEL: Record<Period, string> = {
   "7":  "Últimos 7 dias",
@@ -55,31 +35,9 @@ const ATTR_LABEL: Record<Attribution, string> = {
   organic:    "Orgânico",
 };
 
-const MOCK_LOGS: ExportLog[] = [
-  { id: "e1", exported_at: "2025-06-15T14:32:00", period: "Últimos 30 dias",  event_type: "FTD",           influencer: "thunder_br",   row_count: 89,   format: "csv"  },
-  { id: "e2", exported_at: "2025-06-14T09:15:00", period: "Últimos 7 dias",   event_type: "Todos",         influencer: "Todos",        row_count: 247,  format: "xlsx" },
-  { id: "e3", exported_at: "2025-06-12T17:04:00", period: "Últimos 90 dias",  event_type: "Lead",          influencer: "Todos",        row_count: 1847, format: "csv"  },
-  { id: "e4", exported_at: "2025-06-10T11:50:00", period: "Últimos 30 dias",  event_type: "Redepósito",    influencer: "camila.odds",  row_count: 140,  format: "xlsx" },
-  { id: "e5", exported_at: "2025-06-07T08:23:00", period: "Últimos 14 dias",  event_type: "FTD",           influencer: "vitinho_fx",   row_count: 74,   format: "csv"  },
-];
-
 const MAX_ROWS = 50_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function simulateCount(
-  period: Period,
-  eventType: EventType,
-  influencerId: string,
-  attribution: Attribution
-): number {
-  const BASE: Record<Period, number> = { "7": 247, "14": 489, "30": 1024, "90": 2847 };
-  let n = BASE[period];
-  if (eventType !== "all")     n = Math.floor(n * 0.33);
-  if (influencerId !== "all")  n = Math.floor(n * 0.11);
-  if (attribution !== "all")   n = Math.floor(n * 0.82);
-  return Math.max(n, 1);
-}
-
 function formatCount(n: number): string {
   return n.toLocaleString("pt-BR");
 }
@@ -92,41 +50,9 @@ function formatDateTime(iso: string): string {
   });
 }
 
-function buildMockCsv(
-  count: number,
-  eventType: EventType,
-  influencerId: string
-): string {
-  const TYPES  = eventType === "all"
-    ? ["lead", "ftd", "redeposit"]
-    : [eventType === "redeposit" ? "redeposit" : eventType];
-  const UTMS   = influencerId === "all"
-    ? ["a3k9f2", "b7m2x1", "c9p4n8", "d2q7r3", "e5s1t6"]
-    : [INFLUENCERS.find((i) => i.id === influencerId)?.name ?? "unknown"];
-  const SAMPLE = Math.min(count, 50);
-
-  const header = ["event_id", "event_type", "user_id", "utm_inf", "value_brl", "deposit_number", "event_ts"].join(",");
-  const rows   = Array.from({ length: SAMPLE }, (_, i) => {
-    const type = TYPES[i % TYPES.length];
-    const depositNum = type === "redeposit" ? String(Math.floor(Math.random() * 5) + 1) : "";
-    return [
-      `evt_${Math.random().toString(36).slice(2, 10)}`,
-      type,
-      `usr_${1000 + i}`,
-      UTMS[i % UTMS.length],
-      (Math.random() * 480 + 50).toFixed(2),
-      depositNum,
-      new Date(Date.now() - i * 3_600_000).toISOString(),
-    ].join(",");
-  });
-
-  return [header, ...rows].join("\n");
-}
-
-function triggerDownload(content: string, filename: string, mime: string) {
-  const blob = new Blob([content], { type: mime });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
+function triggerBlobDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement("a");
   a.href     = url;
   a.download = filename;
   document.body.appendChild(a);
@@ -145,55 +71,74 @@ function FilterLabel({ value }: { value: string }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export function ExportPanel() {
+export function ExportPanel({
+  initialLogs,
+  influencers,
+}: {
+  initialLogs: ExportLogRow[];
+  influencers: ExportInfluencer[];
+}) {
+  const router = useRouter();
+  const logs = initialLogs;
+
   // Filters
   const [period,       setPeriod]       = useState<Period>("30");
   const [eventType,    setEventType]    = useState<EventType>("all");
   const [influencerId, setInfluencerId] = useState("all");
   const [attribution,  setAttribution]  = useState<Attribution>("all");
 
-  // Export log
-  const [logs, setLogs] = useState<ExportLog[]>(MOCK_LOGS);
+  const [count, setCount]         = useState(0);
+  const [loadingCount, setLoadingCount] = useState(true);
   const [exporting, setExporting] = useState<Format | null>(null);
 
-  const count = useMemo(
-    () => simulateCount(period, eventType, influencerId, attribution),
-    [period, eventType, influencerId, attribution]
+  const influencerOptions = useMemo(
+    () => [{ id: "all", name: "Todos os influencers" }, ...influencers],
+    [influencers]
   );
 
+  // Preview em tempo real — debounce nos filtros
+  useEffect(() => {
+    let active = true;
+    const t = setTimeout(async () => {
+      if (active) setLoadingCount(true);
+      const result = await getExportPreviewAction(Number(period), eventType, influencerId, attribution);
+      if (active) {
+        setCount(result.count);
+        setLoadingCount(false);
+      }
+    }, 250);
+    return () => { active = false; clearTimeout(t); };
+  }, [period, eventType, influencerId, attribution]);
+
   const overLimit = count > MAX_ROWS;
-  const influencerName = INFLUENCERS.find((i) => i.id === influencerId)?.name ?? "Todos";
+  const influencerName = influencerOptions.find((i) => i.id === influencerId)?.name ?? "Todos";
 
   async function handleExport(format: Format) {
     if (overLimit) return;
     setExporting(format);
 
-    // Simulate async export (real: server action / API call)
-    await new Promise((r) => setTimeout(r, 800));
+    const params = new URLSearchParams({
+      period: period,
+      event_type: eventType,
+      influencer_id: influencerId,
+      attribution: attribution,
+      format,
+    });
 
-    const csv      = buildMockCsv(count, eventType, influencerId);
-    const datePart = new Date().toISOString().split("T")[0];
-    const filename = `wyb_export_${datePart}.${format}`;
-    const mime     = format === "csv"
-      ? "text/csv;charset=utf-8;"
-      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-
-    triggerDownload(csv, filename, mime);
-
-    setLogs((prev) => [
-      {
-        id:          crypto.randomUUID(),
-        exported_at: new Date().toISOString(),
-        period:      PERIOD_LABEL[period],
-        event_type:  EVENT_LABEL[eventType],
-        influencer:  influencerName,
-        row_count:   count,
-        format,
-      },
-      ...prev,
-    ]);
-
-    setExporting(null);
+    try {
+      const res = await fetch(`/api/export?${params.toString()}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error ?? "Falha ao exportar.");
+        return;
+      }
+      const blob = await res.blob();
+      const datePart = new Date().toISOString().split("T")[0];
+      triggerBlobDownload(blob, `wyb_export_${datePart}.${format}`);
+      router.refresh();
+    } finally {
+      setExporting(null);
+    }
   }
 
   const SELECT_CLS = "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-[13px] text-foreground outline-none transition-colors focus:border-ring";
@@ -266,7 +211,7 @@ export function ExportPanel() {
               onChange={(e) => setInfluencerId(e.target.value)}
               className={SELECT_CLS}
             >
-              {INFLUENCERS.map((inf) => (
+              {influencerOptions.map((inf) => (
                 <option key={inf.id} value={inf.id}>{inf.name}</option>
               ))}
             </select>
@@ -297,7 +242,9 @@ export function ExportPanel() {
       )}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
-            {overLimit ? (
+            {loadingCount ? (
+              <span className="text-[22px] font-semibold text-wyb-faint tabular-nums leading-none">…</span>
+            ) : overLimit ? (
               <>
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="size-4 text-amber-500 shrink-0" />
@@ -330,7 +277,7 @@ export function ExportPanel() {
             <Button
               variant="outline"
               size="sm"
-              disabled={overLimit || exporting !== null}
+              disabled={overLimit || loadingCount || exporting !== null}
               onClick={() => handleExport("csv")}
               className="gap-1.5"
             >
@@ -343,7 +290,7 @@ export function ExportPanel() {
             </Button>
             <Button
               size="sm"
-              disabled={overLimit || exporting !== null}
+              disabled={overLimit || loadingCount || exporting !== null}
               onClick={() => handleExport("xlsx")}
               className="gap-1.5"
             >
@@ -401,13 +348,13 @@ export function ExportPanel() {
                     {formatDateTime(log.exported_at)}
                   </td>
                   <td className="px-4">
-                    <FilterLabel value={log.period} />
+                    <FilterLabel value={`${log.filters.period_days}d`} />
                   </td>
                   <td className="px-4">
-                    <FilterLabel value={log.event_type} />
+                    <FilterLabel value={log.filters.event_type} />
                   </td>
                   <td className="px-4 text-wyb-muted">
-                    {log.influencer}
+                    {log.filters.influencer}
                   </td>
                   <td className="px-4 text-right font-semibold text-wyb-text tabular-nums">
                     {formatCount(log.row_count)}

@@ -8,11 +8,18 @@ import { RankingTable }      from "@/components/dashboard/ranking-table";
 import { AvgTicketChart }    from "@/components/dashboard/avg-ticket-chart";
 import { RetentionChart }    from "@/components/dashboard/retention-chart";
 import { ConversionHeatmap } from "@/components/dashboard/conversion-heatmap";
-import { PeriodFilter }      from "@/components/dashboard/period-filter";
+import { DateRangePicker }   from "@/components/dashboard/date-range-picker";
 import { getDashboardData }  from "@/lib/dashboard/data";
+import { resolveRange }      from "@/lib/date-range";
 
-export default async function DashboardPage() {
-  const data = await getDashboardData();
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const params = await searchParams;
+  const range  = resolveRange(params.from, params.to);
+  const data   = await getDashboardData(range);
 
   return (
     <div className="flex flex-col min-h-screen bg-wyb-bg">
@@ -22,7 +29,7 @@ export default async function DashboardPage() {
           <SidebarTrigger className="text-wyb-muted hover:text-wyb-text" />
           <span className="text-[13px] font-medium text-wyb-text">Dashboard</span>
         </div>
-        <PeriodFilter />
+        <DateRangePicker initialFrom={range.from} initialTo={range.to} />
       </header>
 
       <main className="flex-1 p-4 space-y-4">

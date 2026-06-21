@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { DayRange } from "@/lib/date-range";
 
 interface EventRow {
   event_type: "lead" | "ftd" | "redeposit";
@@ -32,11 +33,13 @@ function sumValue(rows: EventRow[]) {
   return rows.reduce((s, e) => s + e.value_brl, 0);
 }
 
-export async function getDashboardData(): Promise<DashboardData> {
+export async function getDashboardData(range: DayRange): Promise<DashboardData> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("events")
-    .select("event_type, value_brl, user_id, influencer_id, event_ts");
+    .select("event_type, value_brl, user_id, influencer_id, event_ts")
+    .gte("event_ts", `${range.from}T00:00:00.000Z`)
+    .lte("event_ts", `${range.to}T23:59:59.999Z`);
 
   if (error) {
     console.error("[dashboard] query error:", error.message);

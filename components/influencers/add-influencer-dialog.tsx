@@ -10,12 +10,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Influencer } from "./influencer-list";
+import { createInfluencerAction } from "@/app/(dashboard)/influencers/actions";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (influencer: Influencer) => void;
+  onCreated: () => void;
 }
 
 const COUNTRIES = [
@@ -30,14 +30,11 @@ const COUNTRIES = [
   { value: "OTHER", label: "Outro" },
 ];
 
-function genUtmId() {
-  return Math.random().toString(36).slice(2, 8);
-}
-
-export function AddInfluencerDialog({ open, onOpenChange, onAdd }: Props) {
-  const [name, setName]       = useState("");
-  const [country, setCountry] = useState("");
-  const [error, setError]     = useState("");
+export function AddInfluencerDialog({ open, onOpenChange, onCreated }: Props) {
+  const [name, setName]         = useState("");
+  const [country, setCountry]   = useState("");
+  const [error, setError]       = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function reset() {
     setName("");
@@ -50,25 +47,26 @@ export function AddInfluencerDialog({ open, onOpenChange, onAdd }: Props) {
     onOpenChange(val);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
       setError("Nome / handle é obrigatório.");
       return;
     }
-    onAdd({
-      id:          crypto.randomUUID(),
-      name:        trimmed,
-      country:     country,
-      utm_id:      genUtmId(),
-      status:      "active",
-      links_count: 0,
-      total_ftds:  0,
-      created_at:  new Date().toISOString().split("T")[0],
-    });
+
+    setSubmitting(true);
+    const result = await createInfluencerAction(trimmed, country);
+    setSubmitting(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
     reset();
     onOpenChange(false);
+    onCreated();
   }
 
   return (
@@ -122,7 +120,9 @@ export function AddInfluencerDialog({ open, onOpenChange, onAdd }: Props) {
             >
               Cancelar
             </Button>
-            <Button type="submit">Adicionar</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Adicionando…" : "Adicionar"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -28,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { AddInfluencerDialog } from "./add-influencer-dialog";
+import { toggleInfluencerStatusAction } from "@/app/(dashboard)/influencers/actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface Influencer {
@@ -42,18 +44,6 @@ export interface Influencer {
 }
 
 type StatusFilter = "all" | "active" | "inactive";
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK: Influencer[] = [
-  { id: "1", name: "thunder_br",   country: "BR", utm_id: "a3k9f2", status: "active",   links_count: 3, total_ftds: 89, created_at: "2025-01-15" },
-  { id: "2", name: "vitinho_fx",   country: "BR", utm_id: "b7m2x1", status: "active",   links_count: 2, total_ftds: 74, created_at: "2025-02-03" },
-  { id: "3", name: "camila.odds",  country: "BR", utm_id: "c9p4n8", status: "active",   links_count: 4, total_ftds: 61, created_at: "2025-02-18" },
-  { id: "4", name: "betmaster_mx", country: "MX", utm_id: "d2q7r3", status: "active",   links_count: 2, total_ftds: 53, created_at: "2025-03-07" },
-  { id: "5", name: "lukasbet",     country: "BR", utm_id: "e5s1t6", status: "active",   links_count: 1, total_ftds: 44, created_at: "2025-03-21" },
-  { id: "6", name: "analista_cl",  country: "CL", utm_id: "f8u3v9", status: "inactive", links_count: 1, total_ftds: 38, created_at: "2025-04-02" },
-  { id: "7", name: "rodrigo_vip",  country: "BR", utm_id: "g1w6y2", status: "active",   links_count: 2, total_ftds: 29, created_at: "2025-04-19" },
-  { id: "8", name: "palpiteiro",   country: "BR", utm_id: "h4z9a5", status: "active",   links_count: 1, total_ftds: 19, created_at: "2025-05-08" },
-];
 
 // ─── Search filter fn ─────────────────────────────────────────────────────────
 const searchFilter: FilterFn<Influencer> = (row, _colId, filterValue) => {
@@ -135,14 +125,16 @@ function StatusBadge({ status }: { status: "active" | "inactive" }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export function InfluencerList() {
-  const [data, setData]               = useState<Influencer[]>(MOCK);
+export function InfluencerList({ initialData }: { initialData: Influencer[] }) {
+  const router = useRouter();
+  const data = initialData;
   const [sorting, setSorting]         = useState<SortingState>([{ id: "total_ftds", desc: true }]);
   const [pagination, setPagination]   = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [globalFilter, setGlobalFilter] = useState("");
   const [searchRaw, setSearchRaw]     = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dialogOpen, setDialogOpen]   = useState(false);
+  const [pendingId, setPendingId]     = useState<string | null>(null);
 
   // Debounce search → reset to page 0 on change
   useEffect(() => {
@@ -159,20 +151,24 @@ export function InfluencerList() {
     [data, statusFilter]
   );
 
-  const handleToggle = useCallback((id: string) => {
-    setData((prev) =>
-      prev.map((r) =>
-        r.id === id ? { ...r, status: r.status === "active" ? "inactive" : "active" } : r
-      )
-    );
-  }, []);
+  const handleToggle = useCallback(async (id: string, current: "active" | "inactive") => {
+    setPendingId(id);
+    const next = current === "active" ? "inactive" : "active";
+    const { error } = await toggleInfluencerStatusAction(id, next);
+    setPendingId(null);
+    if (error) {
+      alert(error);
+      return;
+    }
+    router.refresh();
+  }, [router]);
 
-  const handleAdd = useCallback((influencer: Influencer) => {
-    setData((prev) => [influencer, ...prev]);
+  const handleCreated = useCallback(() => {
     setPagination((p) => ({ ...p, pageIndex: 0 }));
     setSearchRaw("");
     setStatusFilter("all");
-  }, []);
+    router.refresh();
+  }, [router]);
 
   const handleStatusFilter = (v: StatusFilter) => {
     setStatusFilter(v);
@@ -241,24 +237,26 @@ export function InfluencerList() {
         header: "",
         cell: ({ row }) => {
           const isActive = row.original.status === "active";
+          const isPending = pendingId === row.original.id;
           return (
             <button
-              onClick={() => handleToggle(row.original.id)}
+              onClick={() => handleToggle(row.original.id, row.original.status)}
+              disabled={isPending}
               className={cn(
-                "text-[12px] font-medium px-2 py-1 rounded-[6px] transition-colors whitespace-nowrap",
+                "text-[12px] font-medium px-2 py-1 rounded-[6px] transition-colors whitespace-nowrap disabled:opacity-50",
                 isActive
                   ? "text-amber-500 hover:bg-amber-500/10"
                   : "text-wyb-pos hover:bg-wyb-pos/10"
               )}
             >
-              {isActive ? "Desativar" : "Reativar"}
+              {isPending ? "…" : isActive ? "Desativar" : "Reativar"}
             </button>
           );
         },
         enableSorting: false,
       },
     ],
-    [handleToggle]
+    [handleToggle, pendingId]
   );
 
   // ─── Table ──────────────────────────────────────────────────────────────────
@@ -437,7 +435,7 @@ export function InfluencerList() {
       <AddInfluencerDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onAdd={handleAdd}
+        onCreated={handleCreated}
       />
     </>
   );

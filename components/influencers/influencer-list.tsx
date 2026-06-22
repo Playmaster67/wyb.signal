@@ -39,7 +39,9 @@ export interface Influencer {
   utm_id: string;
   status: "active" | "inactive";
   links_count: number;
+  total_leads: number;
   total_ftds: number;
+  total_redeposits: number;
   created_at: string;
 }
 
@@ -210,10 +212,24 @@ export function InfluencerList({ initialData }: { initialData: Influencer[] }) {
         ),
       },
       {
+        accessorKey: "total_leads",
+        header: "Leads",
+        cell: ({ getValue }) => (
+          <span className="tabular-nums text-wyb-text">{getValue<number>()}</span>
+        ),
+      },
+      {
         accessorKey: "total_ftds",
         header: "FTDs",
         cell: ({ getValue }) => (
           <span className="tabular-nums font-semibold text-wyb-text">{getValue<number>()}</span>
+        ),
+      },
+      {
+        accessorKey: "total_redeposits",
+        header: "Redep.",
+        cell: ({ getValue }) => (
+          <span className="tabular-nums text-wyb-text">{getValue<number>()}</span>
         ),
       },
       {
@@ -288,7 +304,7 @@ export function InfluencerList({ initialData }: { initialData: Influencer[] }) {
     { value: "inactive", label: "Inativos" },
   ];
 
-  const RIGHT_COLS = new Set(["links_count", "total_ftds"]);
+  const RIGHT_COLS = new Set(["links_count", "total_leads", "total_ftds", "total_redeposits"]);
 
   return (
     <>

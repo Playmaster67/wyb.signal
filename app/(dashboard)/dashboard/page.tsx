@@ -61,21 +61,43 @@ export default async function DashboardPage({
           />
         </div>
 
-        {/* Ticket médio + Retenção — dependem de atribuição a influencer */}
+        {/* Ticket médio + Retenção — só influencers com FTD no período */}
         <div className="grid grid-cols-2 gap-4">
-          <AvgTicketChart data={[]} />
-          <RetentionChart data={[]} />
+          <AvgTicketChart
+            data={data.influencerBreakdown
+              .filter((r) => r.ftds > 0)
+              .map((r) => ({ name: r.name, ticket: r.avgTicket }))}
+          />
+          <RetentionChart
+            data={data.influencerBreakdown
+              .filter((r) => r.ftds > 0)
+              .map((r) => ({ name: r.name, rate: Math.round(r.retentionRate) }))}
+          />
         </div>
 
         {/* Heatmap + FTDs por influencer */}
         <div className="grid grid-cols-[1fr_280px] gap-4">
           <ConversionHeatmap grid={data.heatmap} />
-          <FTDByInfluencer data={[]} />
+          <FTDByInfluencer
+            data={data.influencerBreakdown
+              .filter((r) => r.ftds > 0)
+              .map((r) => ({ name: r.name, ftds: r.ftds }))}
+          />
         </div>
 
-        {/* Ranking — linhas de influencer vazias até existir atribuição real */}
+        {/* Ranking — influencers reais + linha "Sem atribuição" */}
         <RankingTable
-          influencerRows={[]}
+          influencerRows={data.influencerBreakdown.map((r, i) => ({
+            rank: i + 1,
+            name: r.name,
+            utm_id: r.utm_id,
+            leads: r.leads,
+            ftds: r.ftds,
+            redeposits: r.redeposits,
+            volume_brl: r.volumeBrl,
+            conv_rate: r.convRate,
+            status: r.status,
+          }))}
           organic={{
             leads: data.organic.leadsCount,
             ftds: data.organic.ftdsCount,

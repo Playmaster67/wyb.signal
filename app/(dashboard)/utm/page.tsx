@@ -1,12 +1,7 @@
-import { UTMList } from "@/components/utm/utm-list";
-import { getInfluencers } from "@/lib/influencers/data";
+import { redirect } from "next/navigation";
 
-export default async function UTMPage() {
-  const influencers = await getInfluencers();
-
-  return (
-    <div className="flex flex-col gap-4 p-4">
-      <UTMList initialData={influencers} />
-    </div>
-  );
+// Aba UTM foi unificada na aba Links — o parâmetro utm_inf já vem embutido
+// no link gerado automaticamente pra cada influencer.
+export default function UTMPage() {
+  redirect("/links");
 }

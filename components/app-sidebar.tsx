@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  Hash,
   Link2,
   FileDown,
   Signal,
@@ -26,7 +25,6 @@ import { cn } from "@/lib/utils";
 const nav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Influencers", href: "/influencers", icon: Users },
-  { label: "UTM", href: "/utm", icon: Hash },
   { label: "Links", href: "/links", icon: Link2 },
   { label: "Exportação", href: "/exports", icon: FileDown },
 ];

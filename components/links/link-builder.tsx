@@ -65,7 +65,7 @@ export function LinkBuilder({
   const links       = initialLinks;
 
   const [influencerId, setInfluencerId] = useState("");
-  const [baseUrl, setBaseUrl]           = useState("");
+  const [baseUrl, setBaseUrl]           = useState("https://dios.bet/");
   const [label, setLabel]               = useState("");
   const [submitting, setSubmitting]     = useState(false);
   const [createError, setCreateError]   = useState("");
@@ -96,7 +96,7 @@ export function LinkBuilder({
       return;
     }
 
-    setBaseUrl("");
+    setBaseUrl("https://dios.bet/");
     setLabel("");
     // Mantém o influencer selecionado para facilitar criação de múltiplos links
     router.refresh();

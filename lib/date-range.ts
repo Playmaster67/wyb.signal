@@ -8,26 +8,15 @@ export function todayISO(): string {
   return isoDate(new Date());
 }
 
-// Eventos reais só existem a partir de ontem — não há dado anterior a isso.
-export function minAvailableISO(): string {
-  return isoDate(new Date(Date.now() - MS_PER_DAY));
-}
-
-export function clampToAvailable(dateISO: string): string {
-  const min = minAvailableISO();
-  const max = todayISO();
-  if (dateISO < min) return min;
-  if (dateISO > max) return max;
-  return dateISO;
-}
-
 export interface DayRange {
   from: string;
   to: string;
 }
 
+// Sem trava de data — passado ou futuro sem evento simplesmente conta zero.
 export function resolveRange(fromParam?: string, toParam?: string): DayRange {
-  const from = clampToAvailable(fromParam ?? minAvailableISO());
-  const to   = clampToAvailable(toParam ?? todayISO());
+  const defaultFrom = isoDate(new Date(Date.now() - 29 * MS_PER_DAY)); // últimos 30 dias
+  const from = fromParam ?? defaultFrom;
+  const to   = toParam ?? todayISO();
   return from <= to ? { from, to } : { from: to, to: from };
 }

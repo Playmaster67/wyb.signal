@@ -43,23 +43,16 @@ export function DateRangePicker({
   const [today] = useState(() => new Date());
   const todayMs  = today.getTime();
   const todayISO = useMemo(() => isoDate(today), [today]);
-  const minISO   = useMemo(() => isoDate(new Date(todayMs - MS_PER_DAY)), [todayMs]);
-
-  function clamp(iso: string) {
-    if (iso < minISO) return minISO;
-    if (iso > todayISO) return todayISO;
-    return iso;
-  }
+  const yesterdayISO = useMemo(() => isoDate(new Date(todayMs - MS_PER_DAY)), [todayMs]);
 
   const PRESETS: Preset[] = useMemo(() => [
-    { label: "Hoje",            range: () => ({ from: todayISO, to: todayISO }) },
-    { label: "Ontem",           range: () => ({ from: minISO,   to: minISO }) },
-    { label: "Últimos 7 dias",  range: () => ({ from: clamp(isoDate(new Date(todayMs - 6 * MS_PER_DAY))),  to: todayISO }) },
-    { label: "Últimos 14 dias", range: () => ({ from: clamp(isoDate(new Date(todayMs - 13 * MS_PER_DAY))), to: todayISO }) },
-    { label: "Últimos 30 dias", range: () => ({ from: clamp(isoDate(new Date(todayMs - 29 * MS_PER_DAY))), to: todayISO }) },
-    { label: "Últimos 90 dias", range: () => ({ from: clamp(isoDate(new Date(todayMs - 89 * MS_PER_DAY))), to: todayISO }) },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [todayISO, minISO, todayMs]);
+    { label: "Hoje",            range: () => ({ from: todayISO,     to: todayISO }) },
+    { label: "Ontem",           range: () => ({ from: yesterdayISO, to: yesterdayISO }) },
+    { label: "Últimos 7 dias",  range: () => ({ from: isoDate(new Date(todayMs - 6 * MS_PER_DAY)),  to: todayISO }) },
+    { label: "Últimos 14 dias", range: () => ({ from: isoDate(new Date(todayMs - 13 * MS_PER_DAY)), to: todayISO }) },
+    { label: "Últimos 30 dias", range: () => ({ from: isoDate(new Date(todayMs - 29 * MS_PER_DAY)), to: todayISO }) },
+    { label: "Últimos 90 dias", range: () => ({ from: isoDate(new Date(todayMs - 89 * MS_PER_DAY)), to: todayISO }) },
+  ], [todayISO, yesterdayISO, todayMs]);
 
   const [open, setOpen]   = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>({
@@ -120,7 +113,6 @@ export function DateRangePicker({
             defaultMonth={draft?.from}
             numberOfMonths={2}
             locale={ptBR}
-            disabled={(date) => isoDate(date) < minISO || isoDate(date) > todayISO}
           />
         </div>
       </PopoverContent>

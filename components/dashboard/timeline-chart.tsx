@@ -66,7 +66,7 @@ export function TimelineChart({ data }: TimelineChartProps) {
             </defs>
             <CartesianGrid stroke={C.border} strokeDasharray="0" vertical={false} />
             <XAxis dataKey="date" tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis allowDecimals={false} tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CustomTooltip />} />
             <Area type="monotone" dataKey="leads" stroke={C.accent} strokeWidth={1.5} fill="url(#leadsGrad)" dot={false} activeDot={{ r: 3, fill: C.accent }} />
             <Area type="monotone" dataKey="ftds"  stroke={C.pos}    strokeWidth={1.5} fill="url(#ftdsGrad)"  dot={false} activeDot={{ r: 3, fill: C.pos }}    />

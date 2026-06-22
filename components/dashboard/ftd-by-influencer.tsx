@@ -35,7 +35,7 @@ export function FTDByInfluencer({ data }: FTDByInfluencerProps) {
         <ResponsiveContainer width="100%" height={220}>
           <BarChart data={sorted} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }} barCategoryGap="30%">
             <CartesianGrid horizontal={false} stroke={C.border} strokeDasharray="0" />
-            <XAxis type="number" tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis type="number" allowDecimals={false} tick={{ fill: C.faint, fontSize: 11 }} axisLine={false} tickLine={false} />
             <YAxis type="category" dataKey="name" width={90} tick={{ fill: C.muted, fontSize: 11 }} axisLine={false} tickLine={false} />
             <Tooltip content={<CustomTooltip />} cursor={{ fill: C.accentSoft }} />
             <Bar dataKey="ftds" radius={[0, 4, 4, 0]} maxBarSize={16}>
